@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  database:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://database:27017/devreview
+      - JWT_SECRET=supersecretjwtkey
+      # Replace this with your Groq API Key
+      - GROQ_API_KEY=YOUR_GROQ_API_KEY_HERE
+    depends_on:
+      - database
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:

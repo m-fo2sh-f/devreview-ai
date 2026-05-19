@@ -1,12 +1,25 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import Groq from 'groq-sdk';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { User, Snippet } from './models';
 
 dotenv.config();
 
 const app = express();
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey';
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/devreview';
+mongoose.connect(MONGODB_URI).then(() => {
+  console.log('Connected to MongoDB');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+});
 
 // Middleware
 app.use(cors());
@@ -17,10 +30,74 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// Configure Multer for in-memory file upload
 const upload = multer({ storage: multer.memoryStorage() });
 
-// System Prompt for Groq (LLaMA 3)
+// Authentication Middleware
+interface AuthRequest extends Request {
+  user?: any;
+}
+const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    res.status(401).json({ error: 'Access denied. No token provided.' });
+    return;
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      res.status(403).json({ error: 'Invalid token.' });
+      return;
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// --- AUTH ROUTES ---
+app.post('/api/auth/register', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      res.status(400).json({ error: 'Username and password are required.' });
+      return;
+    }
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      res.status(400).json({ error: 'Username already exists.' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashedPassword });
+    await user.save();
+
+    res.status(201).json({ message: 'User registered successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error during registration.' });
+  }
+});
+
+app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      res.status(401).json({ error: 'Invalid username or password.' });
+      return;
+    }
+
+    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, username: user.username });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error during login.' });
+  }
+});
+
+// --- SYSTEM PROMPT ---
 const SYSTEM_PROMPT = `You are an expert software engineer and code analyzer.
 Your task is to analyze the provided code file and extract its function hierarchy and details.
 
@@ -51,15 +128,14 @@ Analyze the code to identify all functions and their calling relationships (edge
 If there are no function calls, the edges array should be empty.
 Ensure the returned string can be directly parsed by JSON.parse().`;
 
-// Route: POST /api/analyze
-app.post('/api/analyze', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+// --- PROTECTED ROUTE ---
+app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded.' });
       return;
     }
 
-    // Extract text content from the uploaded file
     const fileContent = req.file.buffer.toString('utf-8');
     const response = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
@@ -74,9 +150,15 @@ app.post('/api/analyze', upload.single('file'), async (req: Request, res: Respon
     const jsonString = aiMessage.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsedData = JSON.parse(jsonString);
 
-    // Send the parsed data back to the client
+    // Save the snippet to database
+    const snippet = new Snippet({
+      userId: req.user.userId,
+      code: fileContent,
+      analysisResult: parsedData
+    });
+    await snippet.save();
+
     res.json(parsedData);
-  
   } catch (error: any) {
     res.status(500).json({ 
       error: 'An error occurred while analyzing the file.',
@@ -85,5 +167,22 @@ app.post('/api/analyze', upload.single('file'), async (req: Request, res: Respon
   }
 });
 
-// Export the Express app so Vercel can run it as a serverless function
+app.get('/api/snippets', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const snippets = await Snippet.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+    res.json(snippets);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching snippets' });
+  }
+});
+
+// Start server locally if not running on Vercel
+if (process.env.NODE_ENV !== 'production' || process.env.DOCKER === 'true') {
+  const port = process.env.PORT || 3001;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+// Export the Express app for Vercel Serverless Functions
 export default app;

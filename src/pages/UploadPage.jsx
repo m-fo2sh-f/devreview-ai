@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function UploadPage() {
+  const { token, logout } = useAuth()
   const [file, setFile] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -53,6 +55,9 @@ export default function UploadPage() {
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       })
 
@@ -105,13 +110,28 @@ export default function UploadPage() {
             DevReview <span style={{ color: 'var(--color-primary)' }}>AI</span>
           </span>
         </div>
-        <div style={{
-          fontSize: '13px', color: 'var(--color-text-muted)',
-          padding: '6px 14px', borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--color-border)',
-          background: 'var(--color-surface)',
-        }}>
-          Powered by Groq · LLaMA 3
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            fontSize: '13px', color: 'var(--color-text-muted)',
+            padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+          }}>
+            Powered by Groq · LLaMA 3
+          </div>
+          <button 
+            onClick={logout}
+            style={{
+              fontSize: '13px', color: 'var(--color-text-muted)',
+              padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+              background: 'transparent', cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-error)'; e.currentTarget.style.borderColor = 'var(--color-error)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
+          >
+            Logout
+          </button>
         </div>
       </header>
 
