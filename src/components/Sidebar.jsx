@@ -43,6 +43,8 @@ export default function Sidebar({ isOpen, nodeData, onClose }) {
     lineHeight: 1.6,
     margin: 0,
     border: '1px solid var(--color-border)',
+    overflowX: 'hidden',
+    wordBreak: 'break-word',
   }
 
   return (

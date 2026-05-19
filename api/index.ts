@@ -34,8 +34,8 @@ Schema:
       "label": "functionName",  // The name of the function
       "details": {
         "docs": "A brief explanation of what the function does.",
-        "refactoredCode": "A clean, refactored version of the function code.",
-        "jestTest": "A basic Jest unit test for the function."
+        "refactoredCode": "A clean, refactored version of the ENTIRE function code. DO NOT abbreviate or use '...'. Provide the FULL code.",
+        "jestTest": "A complete, fully functional Jest unit test for the function. DO NOT abbreviate."
       }
     }
   ],
