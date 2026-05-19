@@ -1,0 +1,57 @@
+Act as an Expert Full-Stack Developer (React, Node.js, Express). 
+I am building the core feature of a SaaS project called "DevReview AI". This feature allows a user to upload a code file, sends it to an AI for analysis, and visualizes the AI's feedback as an interactive flowchart.
+
+Your task is to build this feature step-by-step. Read the following phases carefully and execute them logically. Ask for my confirmation after completing each phase before moving to the next.
+
+### Tech Stack
+- Frontend: React (Vite), Tailwind CSS, React Router, `reactflow` (for the flowchart), `dagre` (for auto-layouting).
+- Backend: Node.js, Express, TypeScript, `multer` (for file uploads), `openai` SDK.
+
+---
+
+### Phase 1: Backend Setup & AI Integration (Node.js & Express)
+1. Setup an Express route: `POST /api/analyze`.
+2. Use `multer` to handle a single file upload in memory (`multer.memoryStorage()`).
+3. Extract the text content of the uploaded file (JavaScript/TypeScript).
+4. Construct a strict System Prompt for the OpenAI API (using `gpt-4o-mini`). The prompt MUST force the AI to return ONLY a structured JSON object. 
+5. The JSON structure must exactly match this schema:
+   {
+     "nodes": [
+       { "id": "func1", "label": "functionName", "details": { "docs": "...", "refactoredCode": "...", "jestTest": "..." } }
+     ],
+     "edges": [
+       { "source": "callerFuncId", "target": "calledFuncId" }
+     ]
+   }
+6. Ensure the backend returns this parsed JSON safely to the client. Handle errors and timeouts properly.
+
+---
+
+### Phase 2: Frontend - Upload Page (React)
+1. Create a simple landing page route (`/upload`).
+2. Build a clean, modern UI with Tailwind CSS featuring a prominent "Upload File" button or dropzone.
+3. When a file is selected, send a `multipart/form-data` POST request to the `/api/analyze` endpoint.
+4. Show a professional loading state (spinner or progress bar) while waiting for the AI response.
+5. Upon successful response, navigate the user to the `/result` page, passing the received JSON data via React Router state or a state management tool.
+
+---
+
+### Phase 3: Frontend - Flowchart Visualization (React Flow & Dagre)
+This is the most critical and sensitive part.
+1. On the `/result` page, initialize `reactflow`.
+2. Since LLMs are bad at calculating X/Y coordinates, YOU MUST use the `dagre` layout algorithm to automatically position the nodes perfectly based on their edges. The flow should visually represent a top-down tree or hierarchy of functions.
+3. Map the `nodes` from the AI response into React Flow node objects. Map the `edges` into React Flow edge objects.
+4. Style the nodes using Tailwind to look professional and clickable. Add subtle CSS animations.
+
+---
+
+### Phase 4: Interactivity & Detailed Feedback
+1. Implement an `onNodeClick` event listener on the React Flow instance.
+2. Build a side panel (Sidebar) or a Modal component.
+3. When a user clicks a specific node on the flowchart, the Sidebar/Modal should open and display the `details` object for that specific function:
+   - "Functional Documentation" (Text).
+   - "Refactored Code" (Displayed inside a syntax-highlighted code block).
+   - "Jest Unit Tests" (Displayed inside a syntax-highlighted code block).
+4. Ensure the UI allows closing the sidebar to return to the full flowchart view.
+
+Please acknowledge these instructions and start by generating the Backend (Phase 1) code.
