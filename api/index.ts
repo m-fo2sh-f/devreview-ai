@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, Snippet } from './models';
 
@@ -14,12 +14,33 @@ const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey';
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/devreview';
-mongoose.connect(MONGODB_URI).then(() => {
-  console.log('Connected to MongoDB');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-});
+// On Vercel, if MONGODB_URI is missing, do not attempt to connect to localhost (it will hang).
+const MONGODB_URI = process.env.MONGODB_URI;
+let dbConnected = false;
+
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI).then(() => {
+    console.log('Connected to MongoDB');
+    dbConnected = true;
+  }).catch(err => {
+    console.error('MongoDB connection error:', err);
+  });
+} else if (process.env.DOCKER === 'true' || process.env.NODE_ENV !== 'production') {
+  // Local development / Docker fallback
+  mongoose.connect('mongodb://localhost:27017/devreview').then(() => {
+    console.log('Connected to local MongoDB');
+    dbConnected = true;
+  }).catch(err => console.error(err));
+}
+
+// Helper to check DB status
+const checkDB = (res: Response) => {
+  if (!dbConnected) {
+    res.status(503).json({ error: 'Database is not configured. Please add MONGODB_URI to your environment variables.' });
+    return false;
+  }
+  return true;
+};
 
 // Middleware
 app.use(cors());
@@ -57,6 +78,7 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction):
 
 // --- AUTH ROUTES ---
 app.post('/api/auth/register', async (req: Request, res: Response): Promise<void> => {
+  if (!checkDB(res)) return;
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -81,6 +103,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
 });
 
 app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> => {
+  if (!checkDB(res)) return;
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
@@ -151,12 +174,14 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
     const parsedData = JSON.parse(jsonString);
 
     // Save the snippet to database
-    const snippet = new Snippet({
-      userId: req.user.userId,
-      code: fileContent,
-      analysisResult: parsedData
-    });
-    await snippet.save();
+    if (dbConnected) {
+      const snippet = new Snippet({
+        userId: req.user.userId,
+        code: fileContent,
+        analysisResult: parsedData
+      });
+      await snippet.save();
+    }
 
     res.json(parsedData);
   } catch (error: any) {
@@ -168,6 +193,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
 });
 
 app.get('/api/snippets', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!checkDB(res)) return;
   try {
     const snippets = await Snippet.find({ userId: req.user.userId }).sort({ createdAt: -1 });
     res.json(snippets);
