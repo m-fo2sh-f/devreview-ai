@@ -69,6 +69,7 @@ export default function UploadPage() {
       }
 
       const data = await res.json()
+      console.log('AI Analysis Response from Backend:', data)
       setProgress(100)
 
       // Short delay to show 100%, then navigate

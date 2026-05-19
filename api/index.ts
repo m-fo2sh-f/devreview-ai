@@ -6,9 +6,14 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { User, Snippet } from './models.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey';
@@ -180,6 +185,11 @@ Schema:
   ]
 }
 
+CRITICAL FORMATTING INSTRUCTIONS FOR JSON STRINGS:
+1. In the "refactoredCode" and "jestTest" string fields, you MUST preserve proper code indentation and multiple lines. 
+2. You MUST use escaped newline characters ("\\n") to represent line breaks within these strings so they are valid JSON. DO NOT flatten the code into a single line or strip out newlines.
+3. Escape any quotes appropriately (e.g. use \\" for double quotes, or use single quotes where possible) so the output can be directly parsed by JSON.parse().
+
 Analyze the code to identify all functions and their calling relationships (edges).
 If there are no function calls, the edges array should be empty.
 Ensure the returned string can be directly parsed by JSON.parse().`;
@@ -204,8 +214,20 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
     });
 
     const aiMessage = response.choices[0]?.message?.content || "";
-    const jsonString = aiMessage.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    // Extract the JSON object robustly by finding the first '{' and last '}'
+    let jsonString = aiMessage.trim();
+    const startIdx = jsonString.indexOf('{');
+    const endIdx = jsonString.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      jsonString = jsonString.substring(startIdx, endIdx + 1);
+    } else {
+      jsonString = jsonString.replace(/```json/gi, '').replace(/```/g, '').trim();
+    }
+    
     const parsedData = JSON.parse(jsonString);
+    
+
 
     // Try to save the snippet to database if available
     try {
@@ -221,6 +243,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
     }
 
     res.json(parsedData);
+    console.log(parsedData);
   } catch (error: any) {
     res.status(500).json({ 
       error: 'An error occurred while analyzing the file.',

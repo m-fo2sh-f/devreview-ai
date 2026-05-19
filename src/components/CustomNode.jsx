@@ -5,7 +5,7 @@ function CustomNode({ data, selected }) {
   return (
     <div
       style={{
-        width: '220px',
+        width: 'fit-content',
         padding: '14px 18px',
         borderRadius: 'var(--radius-md)',
         background: selected

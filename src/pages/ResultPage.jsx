@@ -19,7 +19,7 @@ function getLayoutedElements(nodes, edges) {
   g.setGraph({ rankdir: 'TB', ranksep: 80, nodesep: 60, marginx: 40, marginy: 40 })
 
   nodes.forEach((node) => {
-    g.setNode(node.id, { width: 220, height: 70 })
+    g.setNode(node.id, { width: 350, height: 70 })
   })
   edges.forEach((edge) => {
     g.setEdge(edge.source, edge.target)
@@ -51,6 +51,10 @@ export default function ResultPage() {
 
   const analysisData = location.state?.analysisData
   const fileName = location.state?.fileName || 'Untitled'
+
+  if (analysisData) {
+    console.log('AI Analysis Data Loaded in ResultPage:', analysisData)
+  }
 
   // Build React Flow elements from AI data
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -143,7 +147,7 @@ export default function ResultPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
             id="back-to-upload"
-            onClick={() => navigate('/upload')}
+            onClick={() => navigate('/')}
             style={{
               padding: '6px 14px', borderRadius: 'var(--radius-sm)',
               background: 'var(--color-surface-2)',

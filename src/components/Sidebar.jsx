@@ -43,8 +43,8 @@ export default function Sidebar({ isOpen, nodeData, onClose }) {
     lineHeight: 1.6,
     margin: 0,
     border: '1px solid var(--color-border)',
-    overflowX: 'hidden',
-    wordBreak: 'break-word',
+    overflowX: 'auto',
+    wordBreak: 'normal',
   }
 
   return (
@@ -162,7 +162,6 @@ export default function Sidebar({ isOpen, nodeData, onClose }) {
               style={vscDarkPlus}
               customStyle={codeBlockStyle}
               showLineNumbers
-              wrapLongLines
             >
               {details.refactoredCode || '// No refactored code available.'}
             </SyntaxHighlighter>
@@ -175,7 +174,6 @@ export default function Sidebar({ isOpen, nodeData, onClose }) {
               style={vscDarkPlus}
               customStyle={codeBlockStyle}
               showLineNumbers
-              wrapLongLines
             >
               {details.jestTest || '// No tests available.'}
             </SyntaxHighlighter>

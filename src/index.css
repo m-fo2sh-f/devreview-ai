@@ -26,7 +26,7 @@
 
   --gradient-primary: linear-gradient(135deg, #6c5ce7 0%, #a855f7 50%, #00d2ff 100%);
   --gradient-surface: linear-gradient(180deg, var(--color-surface) 0%, var(--color-bg) 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
 
   --shadow-glow: 0 0 40px rgba(108, 92, 231, 0.15);
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
@@ -43,7 +43,9 @@
 }
 
 /* ========== RESET & BASE ========== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -72,6 +74,7 @@ a {
   text-decoration: none;
   transition: color var(--transition-fast);
 }
+
 a:hover {
   color: var(--color-primary);
 }
@@ -85,13 +88,16 @@ a:hover {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-surface-3);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-dim);
 }
@@ -106,13 +112,14 @@ a:hover {
     radial-gradient(circle at 75% 75%, rgba(0, 210, 255, 0.04) 0%, transparent 50%);
   pointer-events: none;
 }
+
 .bg-grid::after {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
@@ -124,69 +131,149 @@ a:hover {
   border-radius: var(--radius-lg);
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
+
 .glass:hover {
   border-color: var(--color-border-hover);
 }
 
 /* ========== ANIMATIONS ========== */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(100%); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes slideOutRight {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(100%); }
-}
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(108, 92, 231, 0.2); }
-  50%      { box-shadow: 0 0 40px rgba(108, 92, 231, 0.4); }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%      { transform: translateY(-8px); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.animate-fadeInUp  { animation: fadeInUp 0.6s ease-out both; }
-.animate-fadeIn    { animation: fadeIn 0.4s ease-out both; }
-.animate-slideIn   { animation: slideInRight 0.35s ease-out both; }
-.animate-slideOut  { animation: slideOutRight 0.3s ease-in both; }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(108, 92, 231, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(108, 92, 231, 0.4);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+.animate-slideIn {
+  animation: slideInRight 0.35s ease-out both;
+}
+
+.animate-slideOut {
+  animation: slideOutRight 0.3s ease-in both;
+}
 
 /* Stagger helpers */
-.delay-1 { animation-delay: 0.1s; }
-.delay-2 { animation-delay: 0.2s; }
-.delay-3 { animation-delay: 0.3s; }
-.delay-4 { animation-delay: 0.4s; }
+.delay-1 {
+  animation-delay: 0.1s;
+}
+
+.delay-2 {
+  animation-delay: 0.2s;
+}
+
+.delay-3 {
+  animation-delay: 0.3s;
+}
+
+.delay-4 {
+  animation-delay: 0.4s;
+}
 
 /* ========== REACT FLOW OVERRIDES ========== */
 .react-flow__background {
   background: var(--color-bg) !important;
 }
+
 .react-flow__minimap {
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--color-border) !important;
   overflow: hidden;
 }
+
 .react-flow__controls {
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--color-border) !important;
   overflow: hidden;
   box-shadow: var(--shadow-card) !important;
 }
+
 .react-flow__controls button {
   background: var(--color-surface-2) !important;
   border-color: var(--color-border) !important;
@@ -194,20 +281,41 @@ a:hover {
   width: 32px !important;
   height: 32px !important;
 }
+
 .react-flow__controls button:hover {
   background: var(--color-surface-3) !important;
 }
+
 .react-flow__controls button svg {
   fill: currentColor !important;
 }
+
 .react-flow__edge-path {
   stroke: var(--color-text-dim) !important;
   stroke-width: 2 !important;
 }
+
 .react-flow__edge.animated .react-flow__edge-path {
   stroke-dasharray: 5;
   animation: dash 1s linear infinite;
 }
+
 @keyframes dash {
-  to { stroke-dashoffset: -10; }
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* ========== SIDEBAR CODE SCROLLING OVERRIDES ========== */
+#detail-sidebar pre {
+  white-space: pre !important;
+  word-wrap: normal !important;
+  word-break: normal !important;
+  overflow-x: auto !important;
+}
+
+#detail-sidebar code {
+  white-space: pre !important;
+  word-wrap: normal !important;
+  word-break: normal !important;
 }
