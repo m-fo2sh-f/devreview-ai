@@ -3,20 +3,14 @@ import multer from 'multer';
 import Groq from 'groq-sdk';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Serve frontend static files in production
-const clientDistPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(clientDistPath));
 
 // Initialize Groq client
 const groq = new Groq({
@@ -91,11 +85,5 @@ app.post('/api/analyze', upload.single('file'), async (req: Request, res: Respon
   }
 });
 
-// SPA fallback — serve index.html for any non-API route
-app.get('*', (_req: Request, res: Response) => {
-  res.sendFile(path.join(clientDistPath, 'index.html'));
-});
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Export the Express app so Vercel can run it as a serverless function
+export default app;
