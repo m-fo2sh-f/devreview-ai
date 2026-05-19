@@ -6,50 +6,85 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User, Snippet } from './models';
+import { User, Snippet } from './models.js';
 
 dotenv.config();
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey';
 
-// MongoDB Connection
-// On Vercel, if MONGODB_URI is missing, do not attempt to connect to localhost (it will hang).
-const MONGODB_URI = process.env.MONGODB_URI;
-let dbConnected = false;
+// Cached MongoDB Connection for Serverless/Vercel environments
+let cachedConnection: typeof mongoose | null = null;
+let cachedPromise: Promise<typeof mongoose> | null = null;
 
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI).then(() => {
-    console.log('Connected to MongoDB');
-    dbConnected = true;
-  }).catch(err => {
-    console.error('MongoDB connection error:', err);
-  });
-} else if (process.env.DOCKER === 'true' || process.env.NODE_ENV !== 'production') {
-  // Local development / Docker fallback
-  mongoose.connect('mongodb://localhost:27017/devreview').then(() => {
-    console.log('Connected to local MongoDB');
-    dbConnected = true;
-  }).catch(err => console.error(err));
+async function connectToDatabase(): Promise<typeof mongoose> {
+  const MONGODB_URI = process.env.MONGODB_URI;
+
+  if (!MONGODB_URI) {
+    if (process.env.DOCKER === 'true' || process.env.NODE_ENV !== 'production') {
+      const localUri = 'mongodb://localhost:27017/devreview';
+      if (!cachedPromise) {
+        cachedPromise = mongoose.connect(localUri).then((m) => {
+          console.log('Connected to local MongoDB');
+          return m;
+        });
+      }
+      cachedConnection = await cachedPromise;
+      return cachedConnection;
+    }
+    throw new Error('Database is not configured. Please add MONGODB_URI to your environment variables.');
+  }
+
+  if (cachedConnection) {
+    return cachedConnection;
+  }
+
+  if (!cachedPromise) {
+    cachedPromise = mongoose.connect(MONGODB_URI).then((m) => {
+      console.log('Connected to MongoDB');
+      return m;
+    });
+  }
+
+  try {
+    cachedConnection = await cachedPromise;
+  } catch (e) {
+    cachedPromise = null;
+    throw e;
+  }
+
+  return cachedConnection;
 }
 
-// Helper to check DB status
-const checkDB = (res: Response) => {
-  if (!dbConnected) {
-    res.status(503).json({ error: 'Database is not configured. Please add MONGODB_URI to your environment variables.' });
-    return false;
+// Middleware to ensure DB connection is ready before processing requests
+const ensureDbConnection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error: any) {
+    res.status(503).json({
+      error: 'Database is not configured or could not be reached.',
+      details: error.message
+    });
   }
-  return true;
 };
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// Initialize Groq client lazily to prevent global module crash if environment variable is missing
+let groq: Groq | null = null;
+const getGroqClient = (): Groq => {
+  if (!groq) {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new Error('GROQ_API_KEY environment variable is missing or empty.');
+    }
+    groq = new Groq({ apiKey });
+  }
+  return groq;
+};
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -77,8 +112,7 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction):
 };
 
 // --- AUTH ROUTES ---
-app.post('/api/auth/register', async (req: Request, res: Response): Promise<void> => {
-  if (!checkDB(res)) return;
+app.post('/api/auth/register', ensureDbConnection, async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -102,8 +136,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
   }
 });
 
-app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> => {
-  if (!checkDB(res)) return;
+app.post('/api/auth/login', ensureDbConnection, async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
@@ -160,7 +193,8 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
     }
 
     const fileContent = req.file.buffer.toString('utf-8');
-    const response = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const response = await groqClient.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -173,14 +207,17 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
     const jsonString = aiMessage.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsedData = JSON.parse(jsonString);
 
-    // Save the snippet to database
-    if (dbConnected) {
+    // Try to save the snippet to database if available
+    try {
+      await connectToDatabase();
       const snippet = new Snippet({
         userId: req.user.userId,
         code: fileContent,
         analysisResult: parsedData
       });
       await snippet.save();
+    } catch (dbError) {
+      console.log('Skipping snippet save as database is not configured or reachable:', dbError);
     }
 
     res.json(parsedData);
@@ -192,8 +229,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: A
   }
 });
 
-app.get('/api/snippets', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (!checkDB(res)) return;
+app.get('/api/snippets', authenticateToken, ensureDbConnection, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const snippets = await Snippet.find({ userId: req.user.userId }).sort({ createdAt: -1 });
     res.json(snippets);
